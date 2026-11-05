@@ -58,9 +58,9 @@ object DocumentImporter {
     }
 
     private fun rtfToHtml(source: String): String {
-        val plain = source.replace("\\\\par[d]?".toRegex(), "\n")
-            .replace("\\'[0-9a-fA-F]{2}".toRegex(), " ")
-            .replace("\\\\[a-zA-Z]+-?\\\\d* ?".toRegex(), "")
+        val plain = source.replace(Regex("""\\par[d]?"""), "\n")
+            .replace(Regex("""\\'[0-9a-fA-F]{2}"""), " ")
+            .replace(Regex("""\\[a-zA-Z]+-?\d* ?"""), "")
             .replace("[{}]".toRegex(), "")
         return plain.lines().joinToString("") { "<p>${escape(it)}</p>" }
     }
@@ -113,6 +113,7 @@ object DocumentExporter {
         val content = text.split('\n').joinToString("") { "<text:p>${xml(it)}</text:p>" }
         return zipBytes(mimetype = "application/vnd.oasis.opendocument.text") {
             add("content.xml", """<?xml version="1.0" encoding="UTF-8"?><office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" office:version="1.2"><office:body><office:text>$content</office:text></office:body></office:document-content>""")
+            add("META-INF/manifest.xml", """<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/><manifest:file-entry manifest:full-path="meta.xml" manifest:media-type="text/xml"/></manifest:manifest>""")
             add("meta.xml", """<?xml version="1.0" encoding="UTF-8"?><office:document-meta xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:dc="http://purl.org/dc/elements/1.1/" office:version="1.2"><office:meta><dc:title>${xml(title)}</dc:title></office:meta></office:document-meta>""")
         }
     }
