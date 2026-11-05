@@ -152,11 +152,11 @@ import org.json.JSONObject
 import java.text.DateFormat
 import java.util.Date
 
-private val Ink = Color(0xFF24233A)
-private val Muted = Color(0xFF77768D)
-private val Accent = Color(0xFF6557D2)
-private val AccentSoft = Color(0xFFF0EDFF)
-private val Canvas = Color(0xFFF6F5FA)
+private val Ink = Color(0xFF202124)
+private val Muted = Color(0xFF5F6368)
+private val Accent = Color(0xFF415C91)
+private val AccentSoft = Color(0xFFE7EBF6)
+private val Canvas = Color(0xFFF1F0FA)
 private val Teal = Color(0xFF36BFA9)
 
 class MainActivity : ComponentActivity() {
@@ -299,64 +299,98 @@ private fun LibraryScreen(
 ) {
     var search by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf("Recent") }
+    var gridMode by remember { mutableStateOf(true) }
+    var topMenu by remember { mutableStateOf(false) }
+    var sortMenu by remember { mutableStateOf(false) }
     val filtered = docs.filter { it.title.contains(search, true) && (filter != "Starred" || it.starred) }
         .sortedByDescending { it.updatedAt }
     Scaffold(
-        containerColor = Canvas,
+        containerColor = Color(0xFFF7F6FC),
         floatingActionButton = {
-            FloatingActionButton(onClick = onCreate, containerColor = Accent, contentColor = Color.White, shape = RoundedCornerShape(18.dp)) { Icon(Icons.Default.Add, contentDescription = "Create document", modifier = Modifier.size(28.dp)) }
+            FloatingActionButton(
+                onClick = onCreate,
+                containerColor = Color(0xFFDCE5FF),
+                contentColor = Color(0xFF263F70),
+                shape = RoundedCornerShape(18.dp)
+            ) { Icon(Icons.Default.Add, contentDescription = "Create document", modifier = Modifier.size(30.dp)) }
         }
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding).padding(horizontal = 18.dp)) {
-            Row(Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 17.dp), verticalAlignment = Alignment.CenterVertically) {
-                Surface(shape = RoundedCornerShape(14.dp), color = Ink, modifier = Modifier.size(44.dp)) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Description, null, tint = Color.White, modifier = Modifier.size(24.dp)) } }
-                Column(Modifier.weight(1f).padding(start = 11.dp)) {
-                    Text("DocuMaker", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = Ink)
-                    Text("DOCUMENT WORKSPACE", fontSize = 9.sp, letterSpacing = 1.4.sp, color = Muted, fontWeight = FontWeight.SemiBold)
-                }
-                IconButton(onClick = onImport) { Icon(Icons.Default.FolderOpen, "Import", tint = Ink) }
-                IconButton(onClick = onCreate) { Icon(Icons.Default.CreateNewFolder, "New", tint = Accent) }
-            }
-            OutlinedTextField(
-                value = search, onValueChange = { search = it }, modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Search documents", color = Muted) }, leadingIcon = { Icon(Icons.Default.Search, null, tint = Muted) },
-                singleLine = true, shape = RoundedCornerShape(16.dp),
-                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(focusedBorderColor = Accent, unfocusedBorderColor = Color(0xFFE5E2EF), focusedContainerColor = Color.White, unfocusedContainerColor = Color.White)
-            )
-            Row(Modifier.padding(top = 21.dp, bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text("Your workspace", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ink)
-                    Text("Create, edit and keep everything organised.", fontSize = 12.sp, color = Muted)
-                }
-                AssistChip(onClick = { filter = if (filter == "Recent") "Starred" else "Recent" }, label = { Text(filter) }, leadingIcon = { Icon(Icons.Default.Star, null, modifier = Modifier.size(16.dp), tint = Accent) })
-            }
-            Text("START WITH A TEMPLATE", fontSize = 10.sp, color = Muted, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp, modifier = Modifier.padding(top = 18.dp, bottom = 10.dp))
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                listOf("Blank", "Meeting", "Report", "Resume", "Invoice").forEach { name ->
-                    val template = DocumentTemplates.items.firstOrNull { it.first.startsWith(name, ignoreCase = true) } ?: DocumentTemplates.items[0]
-                    Card(onClick = { onTemplate(template) }, modifier = Modifier.width(118.dp).height(86.dp), shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Color.White), border = BorderStroke(1.dp, Color(0xFFEAE8F1))) {
-                        Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                            Icon(if (name == "Blank") Icons.Default.Add else Icons.Default.Description, null, tint = Accent)
-                            Text(name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Ink)
-                        }
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            Row(
+                Modifier.fillMaxWidth().background(Color(0xFFF0EFFA)).padding(start = 8.dp, end = 10.dp, top = 12.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box {
+                    IconButton(onClick = { topMenu = true }) { Icon(Icons.Default.Menu, "Navigation menu", tint = Ink) }
+                    DropdownMenu(expanded = topMenu, onDismissRequest = { topMenu = false }) {
+                        DropdownMenuItem(text = { Text("Recent documents") }, onClick = { filter = "Recent"; topMenu = false }, leadingIcon = { Icon(Icons.Default.Description, null) })
+                        DropdownMenuItem(text = { Text("Starred") }, onClick = { filter = "Starred"; topMenu = false }, leadingIcon = { Icon(Icons.Default.Star, null) })
+                        DropdownMenuItem(text = { Text("Import document") }, onClick = { onImport(); topMenu = false }, leadingIcon = { Icon(Icons.Default.FolderOpen, null) })
+                        DropdownMenuItem(text = { Text("Create document") }, onClick = { onCreate(); topMenu = false }, leadingIcon = { Icon(Icons.Default.Add, null) })
                     }
                 }
+                OutlinedTextField(
+                    value = search,
+                    onValueChange = { search = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Search in DocuMaker", fontSize = 14.sp, color = Muted) },
+                    leadingIcon = { Icon(Icons.Default.Search, null, tint = Muted) },
+                    trailingIcon = { IconButton(onClick = onImport) { Icon(Icons.Default.FolderOpen, "Browse files", tint = Ink) } },
+                    singleLine = true,
+                    shape = RoundedCornerShape(28.dp),
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
+                        focusedContainerColor = Color.White, unfocusedContainerColor = Color.White,
+                        cursorColor = Accent
+                    )
+                )
+                Spacer(Modifier.width(7.dp))
+                Surface(shape = CircleShape, color = Color(0xFF3E5685), modifier = Modifier.size(34.dp)) {
+                    Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Description, null, tint = Color.White, modifier = Modifier.size(18.dp)) }
+                }
             }
-            Row(Modifier.fillMaxWidth().padding(top = 23.dp, bottom = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (filter == "Starred") "Starred documents" else "Recent documents", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Ink)
-                Spacer(Modifier.weight(1f)); Text("${filtered.size} files", fontSize = 11.sp, color = Muted)
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 20.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box {
+                    Row(Modifier.clip(RoundedCornerShape(20.dp)).clickable { sortMenu = true }.padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (filter == "Starred") "Com estrela" else "Data de abertura por mim", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Ink)
+                        Icon(Icons.Default.ArrowBack, null, tint = Ink, modifier = Modifier.padding(start = 5.dp).size(15.dp))
+                    }
+                    DropdownMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
+                        DropdownMenuItem(text = { Text("Date opened by me") }, onClick = { filter = "Recent"; sortMenu = false })
+                        DropdownMenuItem(text = { Text("Starred documents") }, onClick = { filter = "Starred"; sortMenu = false })
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = { gridMode = false }, modifier = Modifier.size(38.dp)) {
+                    Icon(Icons.Default.FormatAlignJustify, "List view", tint = if (!gridMode) Accent else Muted)
+                }
+                IconButton(onClick = { gridMode = true }, modifier = Modifier.size(38.dp).clip(RoundedCornerShape(20.dp)).background(if (gridMode) Color(0xFF344A73) else Color.Transparent)) {
+                    Icon(Icons.Default.GridOn, "Grid view", tint = if (gridMode) Color.White else Muted)
+                }
             }
             if (filtered.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Surface(shape = CircleShape, color = AccentSoft, modifier = Modifier.size(76.dp)) { Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Description, null, tint = Accent, modifier = Modifier.size(35.dp)) } }
-                        Spacer(Modifier.height(12.dp)); Text(if (search.isBlank()) "Your workspace is ready" else "No matching documents", fontWeight = FontWeight.Bold, color = Ink)
-                        Text(if (search.isBlank()) "Create your first document to get started." else "Try another search term.", color = Muted, fontSize = 12.sp)
+                        Surface(shape = CircleShape, color = AccentSoft, modifier = Modifier.size(76.dp)) {
+                            Box(contentAlignment = Alignment.Center) { Icon(Icons.Default.Description, null, tint = Accent, modifier = Modifier.size(35.dp)) }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        Text(if (search.isBlank()) "No documents yet" else "No matching documents", fontWeight = FontWeight.SemiBold, color = Ink)
+                        Text(if (search.isBlank()) "Create a document to get started." else "Try another search.", color = Muted, fontSize = 12.sp)
                         if (search.isBlank()) Button(onClick = onCreate, modifier = Modifier.padding(top = 12.dp), colors = ButtonDefaults.buttonColors(containerColor = Accent)) { Text("Create document") }
                     }
                 }
             } else {
-                LazyVerticalGrid(columns = GridCells.Fixed(2), contentPadding = PaddingValues(bottom = 100.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(if (gridMode) 2 else 1),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 100.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     items(filtered, key = { it.id }) { doc -> DocumentCard(doc, onOpen, onStar, onDuplicate, onDelete, onRename) }
                 }
             }
@@ -532,22 +566,23 @@ private fun EditorScreen(
                     IconButton(onClick = { showComment = true }) { Icon(Icons.Default.Comment, "Comment", tint = Ink) }
                     Box {
                         IconButton(onClick = { moreMenu = true }) { Icon(Icons.Default.MoreVert, "More options", tint = Ink) }
-                        DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }, modifier = Modifier.width(260.dp).height(560.dp)) {
-                            DropdownMenuItem(text = { Text("Print layout") }, onClick = { printLayout = !printLayout; js("printLayout($printLayout)"); moreMenu = false }, leadingIcon = { Icon(Icons.Default.Print, null) }, trailingIcon = { Switch(checked = printLayout, onCheckedChange = { printLayout = it; js("printLayout($it)") }) })
-                            DropdownMenuItem(text = { Text("Suggest edits") }, onClick = { suggestions = !suggestions; js("suggestions($suggestions)"); moreMenu = false }, leadingIcon = { Icon(Icons.Default.Edit, null) }, trailingIcon = { Switch(checked = suggestions, onCheckedChange = { suggestions = it; js("suggestions($it)") }) })
+                        DropdownMenu(expanded = moreMenu, onDismissRequest = { moreMenu = false }, modifier = Modifier.width(290.dp).height(590.dp)) {
                             DropdownMenuItem(text = { Text("Document outline") }, onClick = { showOutline = true; moreMenu = false }, leadingIcon = { Icon(Icons.Default.FormatSize, null) })
                             DropdownMenuItem(text = { Text("Find and replace") }, onClick = { showFind = true; moreMenu = false }, leadingIcon = { Icon(Icons.Default.Search, null) })
                             DropdownMenuItem(text = { Text("Spelling and grammar") }, onClick = { webView.evaluateJavascript("document.getElementById('editor').setAttribute('spellcheck','true')", null); moreMenu = false }, leadingIcon = { Icon(Icons.Default.TextFields, null) })
                             DropdownMenuItem(text = { Text("Page setup") }, onClick = { showPageSetup = true; moreMenu = false }, leadingIcon = { Icon(Icons.Default.Article, null) })
                             DropdownMenuItem(text = { Text("Word count") }, onClick = { webView.evaluateJavascript("JSON.stringify(window.DocuMaker.count())") { raw -> countResult = raw?.removeSurrounding("\"", "\"") ?: ""; countResult = countResult.replace("\\\"", "\""); showCount = true }; moreMenu = false }, leadingIcon = { Icon(Icons.Default.FormatSize, null) })
+                            DropdownMenuItem(text = { Text("Print layout") }, onClick = { printLayout = !printLayout; js("printLayout($printLayout)"); moreMenu = false }, leadingIcon = { Icon(Icons.Default.Print, null) }, trailingIcon = { Switch(checked = printLayout, onCheckedChange = { printLayout = it; js("printLayout($it)") }) })
+                            DropdownMenuItem(text = { Text("Suggest edits") }, onClick = { suggestions = !suggestions; js("suggestions($suggestions)"); moreMenu = false }, leadingIcon = { Icon(Icons.Default.Edit, null) }, trailingIcon = { Switch(checked = suggestions, onCheckedChange = { suggestions = it; js("suggestions($it)") }) })
                             Divider()
                             DropdownMenuItem(text = { Text("Make a copy") }, onClick = { onDuplicate(); moreMenu = false }, leadingIcon = { Icon(Icons.Default.ContentCopy, null) })
                             DropdownMenuItem(text = { Text("Share and export") }, onClick = { panel = "export"; moreMenu = false }, leadingIcon = { Icon(Icons.Default.Share, null) })
+                            DropdownMenuItem(text = { Text("Add-ons") }, onClick = { Toast.makeText(context, "Add-ons are planned for a later cloud-connected version", Toast.LENGTH_SHORT).show(); moreMenu = false }, leadingIcon = { Icon(Icons.Default.AutoAwesome, null) })
                             DropdownMenuItem(text = { Text("Move") }, onClick = { showMove = true; moreMenu = false }, leadingIcon = { Icon(Icons.Default.FolderOpen, null) })
                             DropdownMenuItem(text = { Text("Available offline") }, onClick = { offline = !offline; moreMenu = false }, leadingIcon = { Icon(Icons.Default.InsertDriveFile, null) }, trailingIcon = { Switch(checked = offline, onCheckedChange = { offline = it }) })
-                            DropdownMenuItem(text = { Text("Star document") }, onClick = { onStar(); moreMenu = false }, leadingIcon = { Icon(Icons.Default.Star, null) })
+                            DropdownMenuItem(text = { Text(if (doc.starred) "Remove star" else "Add to starred") }, onClick = { onStar(); moreMenu = false }, leadingIcon = { Icon(Icons.Default.Star, null) })
                             DropdownMenuItem(text = { Text("Details") }, onClick = { showDetails = true; moreMenu = false }, leadingIcon = { Icon(Icons.Default.Article, null) })
-                            DropdownMenuItem(text = { Text("Help and feedback") }, onClick = { Toast.makeText(context, "Help centre will be added in a future update", Toast.LENGTH_SHORT).show(); moreMenu = false })
+                            DropdownMenuItem(text = { Text("Help and feedback") }, onClick = { Toast.makeText(context, "Help and feedback will be added in a future update", Toast.LENGTH_SHORT).show(); moreMenu = false }, leadingIcon = { Icon(Icons.Default.Comment, null) })
                         }
                     }
                 }
@@ -609,7 +644,19 @@ private fun EditorScreen(
                             FormatIcon(Icons.Default.FormatListBulleted, "Bullets") { js("list('bullet')") }
                             FormatIcon(Icons.Default.FormatListNumbered, "Numbered") { js("list('ordered')") }
                         }
-                        Text("TEXT COLOUR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Muted, letterSpacing = 1.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { js("superscript()") }) { Text("x²", color = Ink, fontSize = 16.sp) }
+                            TextButton(onClick = { js("subscript()") }) { Text("x₂", color = Ink, fontSize = 16.sp) }
+                            TextButton(onClick = { js("strike()") }) { Text("S̶", color = Ink, fontSize = 16.sp) }
+                            TextButton(onClick = { js("clearFormatting()") }) { Text("Clear", color = Accent, fontSize = 12.sp) }
+                        }
+                        Text("LINE SPACING", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Muted, letterSpacing = 1.sp)
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            listOf("1.0", "1.15", "1.5", "2.0").forEach { spacing ->
+                                AssistChip(onClick = { js("lineSpacing($spacing)") }, label = { Text(spacing, fontSize = 11.sp) })
+                            }
+                        }
+                                                Text("TEXT COLOUR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Muted, letterSpacing = 1.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
                             listOf("#25243A", "#6557D2", "#008C78", "#D24C64", "#2672C9", "#D18A22").forEach { color ->
                                 Box(Modifier.size(32.dp).clip(CircleShape).background(Color(android.graphics.Color.parseColor(color))).clickable { js("color('$color')") })
@@ -630,6 +677,10 @@ private fun EditorScreen(
                         InsertAction("Bookmark", "Mark a place in the document", Icons.Default.Bookmark) { js("addBookmark('Bookmark')"); panel = null }
                         InsertAction("Header", "Add a document heading area", Icons.Default.Article) { js("insertHeaderFooter('header')"); panel = null }
                         InsertAction("Footer", "Add a document footer area", Icons.Default.Article) { js("insertHeaderFooter('footer')"); panel = null }
+                        InsertAction("Page number", "Insert a page number marker", Icons.Default.FormatSize) { js("insertPageNumber()"); panel = null }
+                        InsertAction("Date", "Insert today's date", Icons.Default.Article) { js("insertDate()"); panel = null }
+                        InsertAction("Footnote", "Insert a footnote marker", Icons.Default.Bookmark) { js("insertFootnote('1')"); panel = null }
+                        InsertAction("Special character", "Insert a divider symbol", Icons.Default.TextFields) { js("insertSpecial('—')"); panel = null }
                     }
                 }
                 "export" -> {

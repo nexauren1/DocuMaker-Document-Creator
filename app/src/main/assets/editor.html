@@ -2,18 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <meta name="color-scheme" content="light">
-  <title>DocuMaker Editor</title>
+  <title>DocuMaker</title>
   <style>
-    :root{--ink:#25243a;--muted:#73748c;--accent:#6557d2;--accent-soft:#eeeaff;--paper:#fff;--canvas:#f1f0f7;--line:#e7e5ef;--highlight:#fff1a8}
-    *{box-sizing:border-box}html,body{margin:0;padding:0;min-height:100%;background:var(--canvas);color:var(--ink);font-family:Arial,Helvetica,sans-serif}
-    body{padding:14px 9px 28px}.sheet{background:var(--paper);width:100%;max-width:820px;min-height:950px;margin:0 auto 18px;padding:30px 25px 70px;border:1px solid #e9e7ef;border-radius:14px;box-shadow:0 8px 28px rgba(35,31,71,.07);outline:none;overflow-wrap:anywhere}
-    #editor{min-height:800px;outline:none;font-size:16px;line-height:1.55;white-space:normal}#editor:empty:before{content:'Start writing your document…';color:#a3a2b5;pointer-events:none}
-    h1{font-size:2em;line-height:1.18;margin:.6em 0 .35em}h2{font-size:1.5em;margin:.9em 0 .35em}h3{font-size:1.2em}p{margin:.48em 0}ul,ol{padding-left:26px}table{border-collapse:collapse;width:100%;margin:14px 0;table-layout:fixed}td,th{border:1px solid #c9c7d4;padding:8px;min-width:45px;vertical-align:top}th{background:#f4f2fb;font-weight:700}img{max-width:100%;height:auto;border-radius:5px}.page-break{border:0;border-top:2px dashed #b9b4d5;margin:28px 0;position:relative;height:1px;page-break-after:always}.page-break:after{content:'PAGE BREAK';position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:10px;letter-spacing:1px;background:white;color:#8d89a6;padding:0 8px}.comment-mark{background:#fff1a8;border-bottom:2px solid #c6a63d}.suggestion-insert{background:#e3f6e9;border-bottom:2px solid #49a56d}.doc-header,.doc-footer{padding:8px 0;color:#77768d;font-size:12px;border-bottom:1px solid #e7e5ef}.doc-footer{border-bottom:0;border-top:1px solid #e7e5ef;margin-top:24px}.bookmark-anchor{display:block;border-top:1px dashed #a69fca;color:#716b95;text-align:center;margin:12px 0;font-size:11px}
-    .doc-footnote{font-size:11px;color:#9a98aa}.print-mode body{background:#fff;padding:0}.print-mode .sheet{box-shadow:none;border:0;border-radius:0;margin:0 auto;padding:0;max-width:none}
-    @media(min-width:600px){body{padding:22px}.sheet{padding:55px 64px}}
-    @media print{body{background:white;padding:0}.sheet{box-shadow:none;border:0;margin:0;padding:0;max-width:none;border-radius:0}.page-break{break-after:page}}
+    :root{--ink:#202124;--muted:#5f6368;--accent:#415c91;--accent-soft:#e7ebf6;--canvas:#f1f0fa;--paper:#fff;--line:#e4e5eb;--highlight:#fff2a8}
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;min-height:100%;background:var(--canvas);color:var(--ink);font-family:Roboto,Arial,Helvetica,sans-serif}
+    body{padding:0 0 20px}
+    .sheet{background:var(--paper);width:100%;max-width:794px;min-height:1123px;margin:0 auto 14px;padding:42px 25px 64px;border:0;border-radius:0;box-shadow:0 1px 5px rgba(40,48,72,.12);outline:none;overflow-wrap:anywhere}
+    #editor{min-height:960px;outline:none;font-size:16px;line-height:1.5;white-space:normal;caret-color:#415c91;overflow-wrap:anywhere}
+    #editor:empty:before{content:'Start writing';color:#9aa0a6;pointer-events:none}
+    h1{font-size:2em;line-height:1.18;margin:.6em 0 .35em}h2{font-size:1.5em;margin:.9em 0 .35em}h3{font-size:1.2em}p{margin:.48em 0}ul,ol{padding-left:26px}
+    table{border-collapse:collapse;width:100%;margin:14px 0;table-layout:fixed}td,th{border:1px solid #aeb4c0;padding:8px;min-width:45px;vertical-align:top}th{background:#f1f3f4;font-weight:700}
+    img{max-width:100%;height:auto;border-radius:2px}
+    hr{border:0;border-top:1px solid #dadce0;margin:20px 0}
+    .page-break{display:block;border:0;border-top:2px dashed #9aa7c0;margin:28px 0;position:relative;height:1px;page-break-after:always;break-after:page}
+    .page-break:after{content:'PAGE BREAK';position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:10px;letter-spacing:1px;background:white;color:#6b7894;padding:0 8px}
+    .comment-mark{background:#fff1a8;border-bottom:2px solid #c6a63d}.suggestion-insert{background:#e3f3e8;border-bottom:2px solid #49a56d}
+    .doc-header,.doc-footer{padding:8px 0;color:#70757a;font-size:12px;border-bottom:1px solid var(--line)}
+    .doc-footer{border-bottom:0;border-top:1px solid var(--line);margin-top:24px}
+    .bookmark-anchor{display:block;border-top:1px dashed #9aa7c0;color:#415c91;text-align:center;margin:12px 0;font-size:11px}
+    .doc-footnote{font-size:11px;color:#777}
+    .print-mode body{background:#fff;padding:0}.print-mode .sheet{box-shadow:none;border:0;border-radius:0;margin:0 auto;padding:0;max-width:none}
+    .compact-layout .sheet{max-width:100%;min-height:100vh;margin:0;padding:18px 16px 50px;box-shadow:none}
+    @media(min-width:600px){.sheet{padding:58px 64px 70px}}
+    @media print{html,body{background:#fff;padding:0}.sheet{box-shadow:none;border:0;margin:0;padding:0;max-width:none;border-radius:0}.page-break{break-after:page}}
   </style>
 </head>
 <body>
@@ -25,48 +39,106 @@
   let suggesting=false;
   function notify(){
     clearTimeout(saveTimer);
-    saveTimer=setTimeout(()=>{try{if(window.Native&&Native.onChange)Native.onChange(editor.innerHTML,editor.innerText||'',document.title||'Untitled document')}catch(e){}},450);
+    saveTimer=setTimeout(()=>{try{if(window.Native&&Native.onChange)Native.onChange(editor.innerHTML,editor.innerText||'','')}catch(e){}},420);
   }
   function focus(){editor.focus()}
-  function command(cmd,value){focus();document.execCommand(cmd,false,value||null);notify()}
-  function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-  function selectionSpan(style){focus();const sel=window.getSelection();if(!sel||!sel.rangeCount)return;const range=sel.getRangeAt(0);if(range.collapsed)return;const span=document.createElement('span');Object.assign(span.style,style);try{range.surroundContents(span)}catch(e){span.appendChild(range.extractContents());range.insertNode(span)}notify()}
+  function command(cmd,value){focus();try{document.execCommand(cmd,false,value==null?null:value)}catch(e){}notify()}
+  function escapeHtml(value){return String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  function selectedBlock(){
+    const sel=window.getSelection();if(!sel||!sel.rangeCount)return editor;
+    let node=sel.getRangeAt(0).startContainer;
+    if(node.nodeType===3)node=node.parentElement;
+    while(node&&node!==editor&&!/^(P|DIV|H1|H2|H3|H4|H5|H6|LI|BLOCKQUOTE)$/.test(node.tagName))node=node.parentElement;
+    return node||editor;
+  }
+  function selectionSpan(style){
+    focus();const sel=window.getSelection();if(!sel||!sel.rangeCount)return;
+    const range=sel.getRangeAt(0);if(range.collapsed)return;
+    const span=document.createElement('span');Object.assign(span.style,style);
+    try{range.surroundContents(span)}catch(e){span.appendChild(range.extractContents());range.insertNode(span)}
+    notify();
+  }
+  function insertHtml(markup){focus();document.execCommand('insertHTML',false,markup);notify()}
+  function normalizeUrl(url){let v=String(url||'').trim();if(v&&!/^([a-z]+:|mailto:|tel:)/i.test(v))v='https://'+v;return v}
   window.DocuMaker={
     setContent(html){editor.innerHTML=html||'';notify()},
     getHtml(){return editor.innerHTML},
     getText(){return editor.innerText||''},
     bold(){command('bold')},italic(){command('italic')},underline(){command('underline')},strike(){command('strikeThrough')},
-    undo(){command('undo')},redo(){command('redo')},
+    superscript(){command('superscript')},subscript(){command('subscript')},undo(){command('undo')},redo(){command('redo')},
+    clearFormatting(){command('removeFormat');command('formatBlock','p')},
     align(value){command(value==='left'?'justifyLeft':value==='center'?'justifyCenter':value==='right'?'justifyRight':'justifyFull')},
     list(value){command(value==='ordered'?'insertOrderedList':'insertUnorderedList')},
     indent(){command('indent')},outdent(){command('outdent')},
     block(value){focus();document.execCommand('formatBlock',false,value);notify()},
     font(value){command('fontName',value)},
-    fontSize(px){selectionSpan({fontSize:px+'px'})},
+    fontSize(pt){selectionSpan({fontSize:Math.max(6,Math.min(96,Number(pt)||12))+'pt'})},
     color(value){command('foreColor',value)},highlight(value){command('hiliteColor',value)},
-    insertLink(url){if(url)command('createLink',url)},
-    insertImage(data,alt){focus();document.execCommand('insertHTML',false,'<img src="'+data+'" alt="'+escapeHtml(alt||'Image')+'">');notify()},
-    insertTable(rows,cols){let html='<table><tbody>';for(let r=0;r<rows;r++){html+='<tr>';for(let c=0;c<cols;c++)html+=(r===0?'<th>Header</th>':'<td>Cell</td>');html+='</tr>'}html+='</tbody></table><p></p>';command('insertHTML',html)},
+    lineSpacing(value){const node=selectedBlock();node.style.lineHeight=String(value);notify()},
+    paragraphSpacing(value){const node=selectedBlock();node.style.marginBottom=String(value)+'pt';notify()},
+    insertLink(url){const href=normalizeUrl(url);if(href)command('createLink',href)},
+    insertImage(data,alt){if(!data)return;insertHtml('<img src="'+data+'" alt="'+escapeHtml(alt||'Image')+'">')},
+    insertTable(rows,cols){
+      rows=Math.max(1,Math.min(30,Number(rows)||3));cols=Math.max(1,Math.min(12,Number(cols)||3));
+      let html='<table><tbody>';
+      for(let r=0;r<rows;r++){html+='<tr>';for(let c=0;c<cols;c++)html+=(r===0?'<th>Header</th>':'<td><br></td>');html+='</tr>'}
+      html+='</tbody></table><p><br></p>';insertHtml(html)
+    },
     insertRule(){command('insertHorizontalRule')},
-    insertPageBreak(){command('insertHTML','<div class="page-break" contenteditable="false"></div><p><br></p>')},
-    insertChecklist(){command('insertHTML','<p>☐ Task item</p>')},
-    addBookmark(name){command('insertHTML','<span class="bookmark-anchor" id="bm-'+Date.now()+'">◆ '+escapeHtml(name||'Bookmark')+' ◆</span>')},
-    suggestions(enabled){suggesting=!!enabled;editor.dataset.suggesting=suggesting?'true':'false';},
-    insertHeaderFooter(where){const markup=where==='header'?'<div class="doc-header" contenteditable="true">Document header</div>':'<div class="doc-footer" contenteditable="true">Document footer</div>';if(where==='header')editor.insertAdjacentHTML('afterbegin',markup);else editor.insertAdjacentHTML('beforeend',markup);notify();},
-    addComment(note){const sel=window.getSelection();if(sel&&sel.rangeCount&&!sel.getRangeAt(0).collapsed){selectionSpan({background:'#fff1a8',borderBottom:'2px solid #c6a63d'});command('insertHTML','<sup title="Comment: '+escapeHtml(note)+'" style="color:#6557d2">[comment]</sup>')}else{command('insertHTML','<p><span style="color:#6557d2">[Comment: '+escapeHtml(note)+']</span></p>')}},
-    find(term){if(!term)return 0;const walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);let count=0,node;while(node=walker.nextNode()){const idx=node.nodeValue.toLowerCase().indexOf(term.toLowerCase());if(idx>=0){const range=document.createRange();range.setStart(node,idx);range.setEnd(node,idx+term.length);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);range.startContainer.parentElement.scrollIntoView({block:'center'});count++;break}}return count},
-    replace(search,replacement){if(!search)return 0;let count=0;const walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);const nodes=[];let node;while(node=walker.nextNode())nodes.push(node);nodes.forEach(n=>{const original=n.nodeValue;const re=new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi');n.nodeValue=original.replace(re,()=>{count++;return replacement})});notify();return count},
-    count(){const text=(editor.innerText||'').trim();const words=text?text.match(/\S+/g).length:0;return {words,characters:text.length,charactersNoSpaces:text.replace(/\s/g,'').length,paragraphs:editor.querySelectorAll('p').length,headings:editor.querySelectorAll('h1,h2,h3,h4,h5,h6').length}},
+    insertPageBreak(){insertHtml('<div class="page-break" contenteditable="false"></div><p><br></p>')},
+    insertPageNumber(){insertHtml('<span class="doc-footnote">Page number</span>')},
+    insertDate(){insertHtml('<span>'+new Date().toLocaleDateString()+'</span>')},
+    insertFootnote(note){insertHtml('<sup title="'+escapeHtml(note||'Footnote')+'">['+escapeHtml(note||'1')+']</sup>')},
+    insertSpecial(value){insertHtml(escapeHtml(value||'—'))},
+    insertChecklist(){insertHtml('<p>☐ Task item</p>')},
+    addBookmark(name){insertHtml('<span class="bookmark-anchor" id="bm-'+Date.now()+'">◆ '+escapeHtml(name||'Bookmark')+' ◆</span>')},
+    suggestions(enabled){suggesting=!!enabled;editor.dataset.suggesting=suggesting?'true':'false'},
+    insertHeaderFooter(where){
+      const markup=where==='header'?'<div class="doc-header" contenteditable="true">Document header</div>':'<div class="doc-footer" contenteditable="true">Document footer</div>';
+      if(where==='header')editor.insertAdjacentHTML('afterbegin',markup);else editor.insertAdjacentHTML('beforeend',markup);notify()
+    },
+    addComment(note){
+      const sel=window.getSelection();
+      if(sel&&sel.rangeCount&&!sel.getRangeAt(0).collapsed){
+        selectionSpan({background:'#fff2a8',borderBottom:'2px solid #c6a63d'});
+        insertHtml('<sup title="Comment: '+escapeHtml(note)+'" style="color:#415c91">[comment]</sup>');
+      }else insertHtml('<p><span style="color:#415c91">[Comment: '+escapeHtml(note)+']</span></p>')
+    },
+    find(term){
+      if(!term)return 0;const walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);let node;
+      while(node=walker.nextNode()){const idx=node.nodeValue.toLocaleLowerCase().indexOf(String(term).toLocaleLowerCase());if(idx>=0){
+        const range=document.createRange();range.setStart(node,idx);range.setEnd(node,idx+String(term).length);
+        const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
+        range.startContainer.parentElement.scrollIntoView({block:'center'});return 1
+      }}return 0
+    },
+    replace(search,replacement){
+      if(!search)return 0;let count=0;const walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);const nodes=[];let node;
+      while(node=walker.nextNode())nodes.push(node);
+      nodes.forEach(n=>{if(!n.parentElement.closest('script,style')){const re=new RegExp(String(search).replace(/[.*+?^${()|[\]\\]/g,'\\$&'),'gi');n.nodeValue=n.nodeValue.replace(re,()=>{count++;return String(replacement||'')})}});
+      notify();return count
+    },
+    count(){
+      const text=(editor.innerText||'').trim();const words=text?text.match(/\S+/g).length:0;
+      return {words,characters:text.length,charactersNoSpaces:text.replace(/\s/g,'').length,paragraphs:editor.querySelectorAll('p').length,headings:editor.querySelectorAll('h1,h2,h3,h4,h5,h6').length}
+    },
     outline(){return Array.from(editor.querySelectorAll('h1,h2,h3,h4,h5,h6')).map((h,i)=>({text:h.innerText||'Untitled heading',level:Number(h.tagName.substring(1)),id:h.id||('heading-'+i)}))},
-    pageSetup(size,margin){const sheet=document.querySelector('.sheet');sheet.style.maxWidth=size==='A4'?'794px':size==='Letter'?'816px':'100%';sheet.style.padding=margin+'px';notify()},
+    pageSetup(size,margin){
+      const sheet=document.querySelector('.sheet');
+      sheet.style.maxWidth=size==='A4'?'794px':size==='Letter'?'816px':'100%';
+      sheet.style.padding=Number(margin)+'px';notify()
+    },
     printLayout(enabled){document.documentElement.classList.toggle('print-mode',!!enabled)},
+    compactLayout(enabled){document.documentElement.classList.toggle('compact-layout',!!enabled)},
     focus(){focus()},
     export(){return {html:editor.innerHTML,text:editor.innerText||''}}
   };
-  editor.addEventListener('beforeinput',e=>{if(suggesting&&e.inputType==='insertText'&&e.data){e.preventDefault();document.execCommand('insertHTML',false,'<span class="suggestion-insert">'+escapeHtml(e.data)+'</span>');notify();}});
+  editor.addEventListener('beforeinput',e=>{
+    if(suggesting&&e.inputType==='insertText'&&e.data){e.preventDefault();insertHtml('<span class="suggestion-insert">'+escapeHtml(e.data)+'</span>')}
+  });
   editor.addEventListener('input',notify);editor.addEventListener('keyup',notify);editor.addEventListener('paste',()=>setTimeout(notify,50));
-  editor.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();notify()} });
-  setTimeout(()=>{if(window.Native&&Native.onEditorReady)Native.onEditorReady()},120);
+  editor.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();notify()}});
+  setTimeout(()=>{try{if(window.Native&&Native.onEditorReady)Native.onEditorReady()}catch(e){}},120);
 })();
 </script>
 </body>
