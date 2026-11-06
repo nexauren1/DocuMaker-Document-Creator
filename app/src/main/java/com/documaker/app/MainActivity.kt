@@ -756,7 +756,6 @@ private fun EditorScreen(
         val headings = Regex("(?is)<h([1-6])[^>]*>(.*?)</h[1-6]>").findAll(html).map { it.groupValues[1].toInt() to it.groupValues[2].replace("<[^>]*>".toRegex(), "").trim() }.toList()
         AlertDialog(onDismissRequest = { showOutline = false }, title = { Text("Document outline") }, text = { if (headings.isEmpty()) Text("Add Heading 1, Heading 2 or Heading 3 styles to build an outline.", color = Muted) else Column(verticalArrangement = Arrangement.spacedBy(9.dp)) { headings.forEach { (level, text) -> Text(text.ifBlank { "Untitled heading" }, modifier = Modifier.padding(start = ((level - 1) * 13).dp), color = Ink) } } }, confirmButton = { TextButton(onClick = { showOutline = false }) { Text("Close") } })
     }
-}
     if (showHistory) {
         AlertDialog(
             onDismissRequest = { showHistory = false },
@@ -798,6 +797,7 @@ private fun EditorScreen(
             confirmButton = { TextButton(onClick = { showHistory = false }) { Text("Close") } }
         )
     }
+}
 
 @Composable
 private fun FormatIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
