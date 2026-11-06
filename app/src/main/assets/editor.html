@@ -60,8 +60,22 @@
   }
   function insertHtml(markup){focus();document.execCommand('insertHTML',false,markup);notify()}
   function normalizeUrl(url){let v=String(url||'').trim();if(v&&!/^([a-z]+:|mailto:|tel:)/i.test(v))v='https://'+v;return v}
+  function sanitizeMarkup(markup){
+    const template=document.createElement('template');
+    template.innerHTML=String(markup||'');
+    template.content.querySelectorAll('script,iframe,object,embed,form,input,button,textarea,select,meta,link').forEach(node=>node.remove());
+    template.content.querySelectorAll('*').forEach(element=>{
+      Array.from(element.attributes).forEach(attribute=>{
+        const name=attribute.name.toLowerCase();
+        const value=String(attribute.value||'').trim().toLowerCase();
+        if(name.startsWith('on'))element.removeAttribute(attribute.name);
+        if((name==='href'||name==='src')&&value.startsWith('javascript:'))element.removeAttribute(attribute.name);
+      });
+    });
+    return template.innerHTML;
+  }
   window.DocuMaker={
-    setContent(html){editor.innerHTML=html||'';notify()},
+    setContent(html){editor.innerHTML=sanitizeMarkup(html||'');notify()},
     getHtml(){return editor.innerHTML},
     getText(){return editor.innerText||''},
     bold(){command('bold')},italic(){command('italic')},underline(){command('underline')},strike(){command('strikeThrough')},
@@ -100,8 +114,17 @@
     addComment(note){
       const sel=window.getSelection();
       if(sel&&sel.rangeCount&&!sel.getRangeAt(0).collapsed){
-        selectionSpan({background:'#fff2a8',borderBottom:'2px solid #c6a63d'});
-        insertHtml('<sup title="Comment: '+escapeHtml(note)+'" style="color:#415c91">[comment]</sup>');
+        const range=sel.getRangeAt(0);
+        const mark=document.createElement('span');
+        mark.className='comment-mark';
+        mark.appendChild(range.extractContents());
+        range.insertNode(mark);
+        const marker=document.createElement('sup');
+        marker.title='Comment: '+String(note||'');
+        marker.textContent=' [comment]';
+        mark.parentNode.insertBefore(marker,mark.nextSibling);
+        sel.removeAllRanges();
+        notify();
       }else insertHtml('<p><span style="color:#415c91">[Comment: '+escapeHtml(note)+']</span></p>')
     },
     find(term){
@@ -136,7 +159,16 @@
   editor.addEventListener('beforeinput',e=>{
     if(suggesting&&e.inputType==='insertText'&&e.data){e.preventDefault();insertHtml('<span class="suggestion-insert">'+escapeHtml(e.data)+'</span>')}
   });
-  editor.addEventListener('input',notify);editor.addEventListener('keyup',notify);editor.addEventListener('paste',()=>setTimeout(notify,50));
+  editor.addEventListener('input',notify);
+  editor.addEventListener('keyup',notify);
+  editor.addEventListener('paste',event=>{
+    const pasted=event.clipboardData&&event.clipboardData.getData('text/html');
+    if(pasted){
+      event.preventDefault();
+      insertHtml(sanitizeMarkup(pasted));
+    }
+    setTimeout(notify,50);
+  });
   editor.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();notify()}});
   setTimeout(()=>{try{if(window.Native&&Native.onEditorReady)Native.onEditorReady()}catch(e){}},120);
 })();

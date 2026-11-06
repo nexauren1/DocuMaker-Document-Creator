@@ -16,6 +16,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -35,12 +36,15 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -72,6 +76,7 @@ import androidx.compose.material.icons.filled.FormatAlignLeft
 import androidx.compose.material.icons.filled.FormatAlignRight
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatIndentIncrease
+import androidx.compose.material.icons.filled.FormatIndentDecrease
 import androidx.compose.material.icons.filled.FormatItalic
 import androidx.compose.material.icons.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.FormatListNumbered
@@ -146,6 +151,7 @@ import com.documaker.app.data.DocItem
 import com.documaker.app.data.DocumentExporter
 import com.documaker.app.data.DocumentImporter
 import com.documaker.app.data.DocumentStore
+import com.documaker.app.data.DocumentVersion
 import com.documaker.app.data.DocumentTemplates
 import kotlinx.coroutines.delay
 import org.json.JSONObject
@@ -195,7 +201,15 @@ private fun DocuMakerApp(store: DocumentStore) {
                 val name = context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
                     if (it.moveToFirst()) it.getString(0) else null
                 }
-                val imported = DocumentImporter.read(context, uri, name)
+                val mime = context.contentResolver.getType(uri).orEmpty()
+                val imported = if (mime.startsWith("image/")) {
+                    val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: error("Could not open this image")
+                    require(bytes.size <= 12 * 1024 * 1024) { "The selected image is larger than 12 MB." }
+                    val data = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                    val imageName = name?.substringBeforeLast('.')?.ifBlank { "Imported image" } ?: "Imported image"
+                    val imageAlt = android.text.TextUtils.htmlEncode(imageName)
+                    com.documaker.app.data.DocumentImporter.Imported(imageName, "<p><img alt=\"$imageAlt\" src=\"data:$mime;base64,$data\"></p>")
+                } else DocumentImporter.read(context, uri, name)
                 editing = store.create(imported.title, imported.html)
                 refresh()
             } catch (e: Exception) { importError = e.message ?: "Could not import this file" }
@@ -233,15 +247,19 @@ private fun DocuMakerApp(store: DocumentStore) {
                 onRename = { id, title -> store.rename(id, title); refresh() }
             )
         } else {
+            BackHandler(enabled = true) { refresh(); editing = null }
             val doc = editing!!
             EditorScreen(
                 doc = doc,
                 onBack = { refresh(); editing = null },
-                onSave = { html, _ -> store.update(doc.id, doc.title, html) },
-                onRename = { title -> store.rename(doc.id, title); editing = store.get(doc.id) },
+                onSave = { html, _, currentTitle -> store.update(doc.id, currentTitle, html) },
+                onRename = { newTitle -> store.rename(doc.id, newTitle); editing = store.get(doc.id) },
                 onDuplicate = { val copy = store.duplicate(doc.id); refresh(); if (copy != null) editing = copy },
-                onMove = { folder -> store.move(doc.id, folder); refresh() },
-                onStar = { store.toggleStar(doc.id, !doc.starred); refresh() },
+                onMove = { folder -> store.move(doc.id, folder); refresh(); editing = store.get(doc.id) },
+                onStar = { starred -> store.toggleStar(doc.id, starred); refresh(); editing = store.get(doc.id) },
+                onOffline = { available -> store.setOffline(doc.id, available); refresh() },
+                onGetVersions = { store.versions(doc.id) },
+                onRestoreVersion = { versionId -> val restored = store.restoreVersion(doc.id, versionId); refresh(); editing = restored; restored },
                 onExport = { format, title, html, text ->
                     if (format == "pdf") {
                         Toast.makeText(context, "Choose Print / Save as PDF from the print screen", Toast.LENGTH_LONG).show()
@@ -272,7 +290,7 @@ private fun DocuMakerApp(store: DocumentStore) {
 
         if (createSheet) {
             ModalBottomSheet(onDismissRequest = { createSheet = false }, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = Color.White) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("Create a document", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Ink)
                     Text("Start from a blank page or use a ready-made structure.", color = Muted, fontSize = 13.sp)
                     DocumentTemplates.items.forEachIndexed { index, template ->
@@ -302,8 +320,11 @@ private fun LibraryScreen(
     var gridMode by remember { mutableStateOf(true) }
     var topMenu by remember { mutableStateOf(false) }
     var sortMenu by remember { mutableStateOf(false) }
-    val filtered = docs.filter { it.title.contains(search, true) && (filter != "Starred" || it.starred) }
-        .sortedByDescending { it.updatedAt }
+    val filtered = docs.filter {
+        (search.isBlank() || it.title.contains(search, true) ||
+            it.html.replace("<[^>]*>".toRegex(), " ").contains(search, true)) &&
+            (filter != "Starred" || it.starred)
+    }.sortedByDescending { it.updatedAt }
     Scaffold(
         containerColor = Color(0xFFF7F6FC),
         floatingActionButton = {
@@ -441,11 +462,14 @@ private fun DocumentCard(doc: DocItem, onOpen: (Long) -> Unit, onStar: (Long, Bo
 private fun EditorScreen(
     doc: DocItem,
     onBack: () -> Unit,
-    onSave: (String, String) -> Unit,
+    onSave: (String, String, String) -> Unit,
     onRename: (String) -> Unit,
     onDuplicate: () -> Unit,
     onMove: (String) -> Unit,
-    onStar: () -> Unit,
+    onStar: (Boolean) -> Unit,
+    onOffline: (Boolean) -> Unit,
+    onGetVersions: () -> List<DocumentVersion>,
+    onRestoreVersion: (Long) -> DocItem?,
     onExport: (String, String, String, String) -> Unit,
     onShare: (String) -> Unit
 ) {
@@ -477,11 +501,16 @@ private fun EditorScreen(
     var countResult by remember { mutableStateOf("Calculating…") }
     var showDetails by remember { mutableStateOf(false) }
     var showMove by remember { mutableStateOf(false) }
-    var moveFolder by remember { mutableStateOf(doc.folder) }
+    var moveFolder by remember(doc.id) { mutableStateOf(doc.folder) }
+    var currentFolder by remember(doc.id) { mutableStateOf(doc.folder) }
     var showOutline by remember { mutableStateOf(false) }
+    var showHistory by remember { mutableStateOf(false) }
+    var historyVersions by remember { mutableStateOf(emptyList<DocumentVersion>()) }
+    var starred by remember(doc.id) { mutableStateOf(doc.starred) }
     var printLayout by remember { mutableStateOf(false) }
     var suggestions by remember { mutableStateOf(false) }
-    var offline by remember { mutableStateOf(true) }
+    var offline by remember(doc.id) { mutableStateOf(doc.offline) }
+    var saveStatus by remember { mutableStateOf("Saved on this device") }
     var pendingExportFormat by remember { mutableStateOf("docx") }
 
     val webView = remember(doc.id) {
@@ -497,7 +526,9 @@ private fun EditorScreen(
                 @JavascriptInterface fun onChange(newHtml: String, plain: String, ignoredTitle: String) {
                     Handler(Looper.getMainLooper()).post {
                         html = newHtml
-                        saveCallback(newHtml, plain)
+                        saveStatus = "Saving…"
+                        saveCallback(newHtml, plain, title)
+                        saveStatus = "Saved on this device"
                     }
                 }
                 @JavascriptInterface fun onEditorReady() {
@@ -510,6 +541,16 @@ private fun EditorScreen(
                 }
             }, "Native")
             webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                    val target = url ?: return true
+                    if (target.startsWith("file:///android_asset/")) return false
+                    return try {
+                        if (target.startsWith("https://") || target.startsWith("http://") || target.startsWith("mailto:")) {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
+                        }
+                        true
+                    } catch (_: Exception) { true }
+                }
                 override fun onPageFinished(view: WebView?, url: String?) {
                     view?.evaluateJavascript("window.DocuMaker.setContent(${JSONObject.quote(doc.html)})", null)
                 }
@@ -558,7 +599,7 @@ private fun EditorScreen(
                     IconButton(onClick = onBack) { Icon(Icons.Default.Check, "Done", tint = Accent) }
                     Column(Modifier.weight(1f).clickable { showRename = true }.padding(start = 3.dp)) {
                         Text(title, maxLines = 1, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Ink)
-                        Text("Saved on this device", fontSize = 10.sp, color = Muted)
+                        Text(saveStatus, fontSize = 10.sp, color = Muted)
                     }
                     IconButton(onClick = { js("undo()") }) { Icon(Icons.Default.Undo, "Undo", tint = Ink) }
                     IconButton(onClick = { js("redo()") }) { Icon(Icons.Default.Redo, "Redo", tint = Ink) }
@@ -572,6 +613,7 @@ private fun EditorScreen(
                             DropdownMenuItem(text = { Text("Spelling and grammar") }, onClick = { webView.evaluateJavascript("document.getElementById('editor').setAttribute('spellcheck','true')", null); moreMenu = false }, leadingIcon = { Icon(Icons.Default.TextFields, null) })
                             DropdownMenuItem(text = { Text("Page setup") }, onClick = { showPageSetup = true; moreMenu = false }, leadingIcon = { Icon(Icons.Default.Article, null) })
                             DropdownMenuItem(text = { Text("Word count") }, onClick = { webView.evaluateJavascript("JSON.stringify(window.DocuMaker.count())") { raw -> countResult = raw?.removeSurrounding("\"", "\"") ?: ""; countResult = countResult.replace("\\\"", "\""); showCount = true }; moreMenu = false }, leadingIcon = { Icon(Icons.Default.FormatSize, null) })
+                            DropdownMenuItem(text = { Text("Version history") }, onClick = { historyVersions = onGetVersions(); showHistory = true; moreMenu = false }, leadingIcon = { Icon(Icons.Default.History, null) })
                             DropdownMenuItem(text = { Text("Print layout") }, onClick = { printLayout = !printLayout; js("printLayout($printLayout)"); moreMenu = false }, leadingIcon = { Icon(Icons.Default.Print, null) }, trailingIcon = { Switch(checked = printLayout, onCheckedChange = { printLayout = it; js("printLayout($it)") }) })
                             DropdownMenuItem(text = { Text("Suggest edits") }, onClick = { suggestions = !suggestions; js("suggestions($suggestions)"); moreMenu = false }, leadingIcon = { Icon(Icons.Default.Edit, null) }, trailingIcon = { Switch(checked = suggestions, onCheckedChange = { suggestions = it; js("suggestions($it)") }) })
                             Divider()
@@ -579,8 +621,8 @@ private fun EditorScreen(
                             DropdownMenuItem(text = { Text("Share and export") }, onClick = { panel = "export"; moreMenu = false }, leadingIcon = { Icon(Icons.Default.Share, null) })
                             DropdownMenuItem(text = { Text("Add-ons") }, onClick = { Toast.makeText(context, "Add-ons are planned for a later cloud-connected version", Toast.LENGTH_SHORT).show(); moreMenu = false }, leadingIcon = { Icon(Icons.Default.AutoAwesome, null) })
                             DropdownMenuItem(text = { Text("Move") }, onClick = { showMove = true; moreMenu = false }, leadingIcon = { Icon(Icons.Default.FolderOpen, null) })
-                            DropdownMenuItem(text = { Text("Available offline") }, onClick = { offline = !offline; moreMenu = false }, leadingIcon = { Icon(Icons.Default.InsertDriveFile, null) }, trailingIcon = { Switch(checked = offline, onCheckedChange = { offline = it }) })
-                            DropdownMenuItem(text = { Text(if (doc.starred) "Remove star" else "Add to starred") }, onClick = { onStar(); moreMenu = false }, leadingIcon = { Icon(Icons.Default.Star, null) })
+                            DropdownMenuItem(text = { Text("Available offline") }, onClick = { offline = !offline; onOffline(offline); moreMenu = false }, leadingIcon = { Icon(Icons.Default.InsertDriveFile, null) }, trailingIcon = { Switch(checked = offline, onCheckedChange = { offline = it; onOffline(it) }) })
+                            DropdownMenuItem(text = { Text(if (starred) "Remove star" else "Add to starred") }, onClick = { starred = !starred; onStar(starred); moreMenu = false }, leadingIcon = { Icon(Icons.Default.Star, null) })
                             DropdownMenuItem(text = { Text("Details") }, onClick = { showDetails = true; moreMenu = false }, leadingIcon = { Icon(Icons.Default.Article, null) })
                             DropdownMenuItem(text = { Text("Help and feedback") }, onClick = { Toast.makeText(context, "Help and feedback will be added in a future update", Toast.LENGTH_SHORT).show(); moreMenu = false }, leadingIcon = { Icon(Icons.Default.Comment, null) })
                         }
@@ -601,6 +643,8 @@ private fun EditorScreen(
                     FormatIcon(Icons.Default.FormatListBulleted, "Bulleted list") { js("list('bullet')") }
                     FormatIcon(Icons.Default.FormatListNumbered, "Numbered list") { js("list('ordered')") }
                     FormatIcon(Icons.Default.FormatIndentIncrease, "Indent") { js("indent()") }
+                    FormatIcon(Icons.Default.FormatIndentDecrease, "Outdent") { js("outdent()") }
+                    IconButton(onClick = { panel = "insert" }) { Icon(Icons.Default.Add, "Insert", tint = Accent) }
                     IconButton(onClick = { panel = "format" }) { Icon(Icons.Default.FormatSize, "More formatting", tint = Accent) }
                 }
             }
@@ -658,7 +702,7 @@ private fun EditorScreen(
                         }
                                                 Text("TEXT COLOUR", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Muted, letterSpacing = 1.sp)
                         Row(horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-                            listOf("#25243A", "#6557D2", "#008C78", "#D24C64", "#2672C9", "#D18A22").forEach { color ->
+                            listOf("#202124", "#415C91", "#188038", "#D93025", "#1A73E8", "#A142F4").forEach { color ->
                                 Box(Modifier.size(32.dp).clip(CircleShape).background(Color(android.graphics.Color.parseColor(color))).clickable { js("color('$color')") })
                             }
                         }
@@ -706,13 +750,54 @@ private fun EditorScreen(
     if (showTable) AlertDialog(onDismissRequest = { showTable = false }, title = { Text("Insert table") }, text = { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedTextField(tableRows, { tableRows = it.filter(Char::isDigit).take(2) }, modifier = Modifier.weight(1f), label = { Text("Rows") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)); OutlinedTextField(tableCols, { tableCols = it.filter(Char::isDigit).take(2) }, modifier = Modifier.weight(1f), label = { Text("Columns") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)) } }, confirmButton = { TextButton(onClick = { js("insertTable(${tableRows.toIntOrNull()?.coerceIn(1,20) ?: 3},${tableCols.toIntOrNull()?.coerceIn(1,10) ?: 3})"); showTable = false }) { Text("Insert") } }, dismissButton = { TextButton(onClick = { showTable = false }) { Text("Cancel") } })
     if (showPageSetup) AlertDialog(onDismissRequest = { showPageSetup = false }, title = { Text("Page setup") }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { Text("Paper size"); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("A4", "Letter", "Full width").forEach { AssistChip(onClick = { pageSize = it }, label = { Text(it) }) } }; Text("Page margins"); Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { listOf("16", "26", "40", "56").forEach { AssistChip(onClick = { margins = it }, label = { Text("${it}dp") }) } } } }, confirmButton = { TextButton(onClick = { js("pageSetup(${JSONObject.quote(pageSize)},${margins.toIntOrNull() ?: 26})"); showPageSetup = false }) { Text("Apply") } }, dismissButton = { TextButton(onClick = { showPageSetup = false }) { Text("Cancel") } })
     if (showCount) AlertDialog(onDismissRequest = { showCount = false }, title = { Text("Document statistics") }, text = { Text(countResult.replace("{", "").replace("}", "").replace(",", "\n").replace("\"", "").replace(":", ": ")) }, confirmButton = { TextButton(onClick = { showCount = false }) { Text("Done") } })
-    if (showDetails) AlertDialog(onDismissRequest = { showDetails = false }, title = { Text("Document details") }, text = { Column(verticalArrangement = Arrangement.spacedBy(7.dp)) { Text(title, fontWeight = FontWeight.Bold); Text("Folder: ${doc.folder}", color = Muted); Text("Created: ${DateFormat.getDateTimeInstance().format(Date(doc.createdAt))}", color = Muted); Text("Last modified: ${DateFormat.getDateTimeInstance().format(Date(doc.updatedAt))}", color = Muted); Text("Storage: On this device", color = Muted); Text("Format: DocuMaker HTML document", color = Muted) } }, confirmButton = { TextButton(onClick = { showDetails = false }) { Text("Close") } })
-    if (showMove) AlertDialog(onDismissRequest = { showMove = false }, title = { Text("Move document") }, text = { OutlinedTextField(moveFolder, { moveFolder = it }, label = { Text("Folder name") }, singleLine = true) }, confirmButton = { TextButton(onClick = { onMove(moveFolder.ifBlank { "My documents" }); showMove = false }) { Text("Move") } }, dismissButton = { TextButton(onClick = { showMove = false }) { Text("Cancel") } })
+    if (showDetails) AlertDialog(onDismissRequest = { showDetails = false }, title = { Text("Document details") }, text = { Column(verticalArrangement = Arrangement.spacedBy(7.dp)) { Text(title, fontWeight = FontWeight.Bold); Text("Folder: $currentFolder", color = Muted); Text("Created: ${DateFormat.getDateTimeInstance().format(Date(doc.createdAt))}", color = Muted); Text("Last modified: ${DateFormat.getDateTimeInstance().format(Date(doc.updatedAt))}", color = Muted); Text("Storage: ${if (offline) "Available offline" else "On this device"}", color = Muted); Text("Format: DocuMaker HTML document", color = Muted) } }, confirmButton = { TextButton(onClick = { showDetails = false }) { Text("Close") } })
+    if (showMove) AlertDialog(onDismissRequest = { showMove = false }, title = { Text("Move document") }, text = { OutlinedTextField(moveFolder, { moveFolder = it }, label = { Text("Folder name") }, singleLine = true) }, confirmButton = { TextButton(onClick = { currentFolder = moveFolder.ifBlank { "My documents" }; onMove(currentFolder); showMove = false }) { Text("Move") } }, dismissButton = { TextButton(onClick = { showMove = false }) { Text("Cancel") } })
     if (showOutline) {
         val headings = Regex("(?is)<h([1-6])[^>]*>(.*?)</h[1-6]>").findAll(html).map { it.groupValues[1].toInt() to it.groupValues[2].replace("<[^>]*>".toRegex(), "").trim() }.toList()
         AlertDialog(onDismissRequest = { showOutline = false }, title = { Text("Document outline") }, text = { if (headings.isEmpty()) Text("Add Heading 1, Heading 2 or Heading 3 styles to build an outline.", color = Muted) else Column(verticalArrangement = Arrangement.spacedBy(9.dp)) { headings.forEach { (level, text) -> Text(text.ifBlank { "Untitled heading" }, modifier = Modifier.padding(start = ((level - 1) * 13).dp), color = Ink) } } }, confirmButton = { TextButton(onClick = { showOutline = false }) { Text("Close") } })
     }
 }
+    if (showHistory) {
+        AlertDialog(
+            onDismissRequest = { showHistory = false },
+            title = { Text("Version history") },
+            text = {
+                if (historyVersions.isEmpty()) {
+                    Text("No previous versions have been saved yet. DocuMaker creates snapshots while you edit.", color = Muted)
+                } else {
+                    LazyColumn(Modifier.heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        items(historyVersions, key = { it.id }) { version ->
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable {
+                                        val restored = onRestoreVersion(version.id)
+                                        if (restored != null) {
+                                            title = restored.title
+                                            html = restored.html
+                                            webView.evaluateJavascript("window.DocuMaker.setContent(${JSONObject.quote(restored.html)})", null)
+                                            saveStatus = "Restored version"
+                                            historyVersions = onGetVersions()
+                                            showHistory = false
+                                        }
+                                    }
+                                    .padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.History, null, tint = Accent)
+                                Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                                    Text(version.title, fontWeight = FontWeight.SemiBold, color = Ink, maxLines = 1)
+                                    Text(DateFormat.getDateTimeInstance().format(Date(version.createdAt)), color = Muted, fontSize = 11.sp)
+                                }
+                                Text("Restore", color = Accent, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showHistory = false }) { Text("Close") } }
+        )
+    }
 
 @Composable
 private fun FormatIcon(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
